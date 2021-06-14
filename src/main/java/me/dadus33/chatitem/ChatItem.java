@@ -15,7 +15,6 @@ import me.dadus33.chatitem.listeners.ChatPacketListener;
 import me.dadus33.chatitem.listeners.ChatPacketValidator;
 import me.dadus33.chatitem.utils.ProtocolSupportUtil;
 import me.dadus33.chatitem.utils.Storage;
-import org.bstats.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
 import org.bukkit.command.CommandSender;
@@ -129,8 +128,6 @@ public class ChatItem extends JavaPlugin {
 
         //Initialize Log4J filter (remove ugly console messages)
         filter = new Log4jFilter(storage);
-
-        new Metrics(this);
     }
 
 
