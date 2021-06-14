@@ -109,15 +109,17 @@ public enum ProtocolVersion {
             throw new NullPointerException("Player cannot be null!");
         }
 
-        if(ChatItem.usesViaVersion()){
-            return Via.getAPI().getPlayerVersion(p.getUniqueId());
-        }else if(ChatItem.usesProtocolSupport()){
-             return ProtocolSupportUtil.getProtocolVersion(p);
+        try {
+	        if(ChatItem.usesViaVersion()){
+		        return Via.getAPI().getPlayerVersion(p.getUniqueId());
+	        }else if(ChatItem.usesProtocolSupport()){
+		        return ProtocolSupportUtil.getProtocolVersion(p);
+	        }
+        } catch (NullPointerException ignored) {
+        	// Caused by temporary players, can be safely ignored
         }
 
         return getServerVersion().MAX_VER;
-
-        //return PLAYER_VERSION_MAP.get(stringifyAdress(p.getAddress()));
     }
 
     public static String stringifyAdress(InetSocketAddress address){
