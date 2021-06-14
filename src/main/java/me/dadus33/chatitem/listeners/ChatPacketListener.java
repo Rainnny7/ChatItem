@@ -15,16 +15,16 @@ import net.md_5.bungee.chat.ComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
-import org.bukkit.block.ShulkerBox;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Optional;
 
 
 public class ChatPacketListener extends PacketAdapter {
@@ -32,20 +32,12 @@ public class ChatPacketListener extends PacketAdapter {
     private final static String NAME = "{name}";
     private final static String AMOUNT = "{amount}";
     private final static String TIMES = "{times}";
-    private final static List<Material> SHULKER_BOXES = new ArrayList<>();
 
     private Storage c;
 
 
     public ChatPacketListener(Plugin plugin, ListenerPriority listenerPriority, Storage s, PacketType... types) {
         super(plugin, listenerPriority, types);
-        if(ChatItem.supportsShulkerBoxes()){
-            SHULKER_BOXES.addAll(Arrays.asList(Material.BLACK_SHULKER_BOX, Material.BLUE_SHULKER_BOX,
-                    Material.BROWN_SHULKER_BOX, Material.CYAN_SHULKER_BOX, Material.GRAY_SHULKER_BOX, Material.GREEN_SHULKER_BOX,
-                    Material.LIGHT_BLUE_SHULKER_BOX, Material.LIME_SHULKER_BOX, Material.MAGENTA_SHULKER_BOX, Material.ORANGE_SHULKER_BOX,
-                    Material.PINK_SHULKER_BOX, Material.PURPLE_SHULKER_BOX, Material.RED_SHULKER_BOX, Material.LIGHT_GRAY_SHULKER_BOX,
-                    Material.WHITE_SHULKER_BOX, Material.YELLOW_SHULKER_BOX));
-        }
         c = s;
     }
 
@@ -94,13 +86,22 @@ public class ChatPacketListener extends PacketAdapter {
     @Override
     public void onPacketSending(final PacketEvent e) {
         final PacketContainer packet = e.getPacket();
-        if(!packet.hasMetadata("parse")){ //First we check if the packet validator has validated this packet to be parsed by us
-            return;
-        }
-        final boolean usesBaseComponents = (boolean)packet.getMetadata("base-component"); //The packet validator should also tell if this packet uses base components
+	    final Optional<Object> optionalParseMeta = packet.getMeta("parse");
+	    if (!optionalParseMeta.isPresent()) { //First we check if the packet validator has validated this packet to be parsed by us
+	    	return;
+	    }
+	    final Optional<Object> optionalBaseComponentMeta = packet.getMeta("base-component");
+	    if (!optionalBaseComponentMeta.isPresent()) { //The packet validator should also tell if this packet uses base components
+		    return;
+	    }
+	    final boolean usesBaseComponents = (boolean) optionalBaseComponentMeta.get();
         e.setCancelled(true); //We cancel the packet as we're going to resend it anyways (ignoring listeners this time)
         Bukkit.getScheduler().runTaskAsynchronously(ChatItem.getInstance(), () -> {
-            String json = (String)packet.getMetadata("json"); //The packet validator got the json for us, so no need to get it again
+	        final Optional<Object> optionalJsonMeta = packet.getMeta("json");
+	        if (!optionalJsonMeta.isPresent()) { //The packet validator got the json for us, so no need to get it again
+		        return;
+	        }
+	        String json = (String) optionalJsonMeta.get();
             int topIndex = -1;
             String name = null;
             for(Player p : Bukkit.getOnlinePlayers()){
@@ -127,26 +128,10 @@ public class ChatPacketListener extends PacketAdapter {
             try {
                 if(!p.getItemInHand().getType().equals(Material.AIR)) {
                     ItemStack copy = p.getItemInHand().clone();
-                    if(copy.getType().equals(Material.WRITABLE_BOOK) || copy.getType().equals(Material.WRITTEN_BOOK)){ //filtering written books
+                    if(copy.getType().equals(Material.BOOK_AND_QUILL) || copy.getType().equals(Material.WRITTEN_BOOK)){ //filtering written books
                         BookMeta bm = (BookMeta)copy.getItemMeta();
                         bm.setPages(Collections.emptyList());
                         copy.setItemMeta(bm);
-                    } else {
-                        if (ChatItem.supportsShulkerBoxes()) { //filtering shulker boxes
-                            if (SHULKER_BOXES.contains(copy.getType())) {
-                                if (copy.hasItemMeta()) {
-                                    BlockStateMeta bsm = (BlockStateMeta) copy.getItemMeta();
-                                    if (bsm.hasBlockState()) {
-                                        ShulkerBox sb = (ShulkerBox) bsm.getBlockState();
-                                        for (ItemStack item : sb.getInventory()) {
-                                            stripData(item);
-                                        }
-                                        bsm.setBlockState(sb);
-                                    }
-                                    copy.setItemMeta(bsm);
-                                }
-                            }
-                        }
                     }
                     message = ChatItem.getManipulator().parse(json, c.PLACEHOLDERS, copy, styleItem(copy, c), ProtocolVersion.getClientVersion(e.getPlayer()));
                 } else {

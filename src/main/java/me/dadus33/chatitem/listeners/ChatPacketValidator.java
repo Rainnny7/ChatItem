@@ -62,9 +62,9 @@ public class ChatPacketValidator extends PacketAdapter {
             return;
         }
 
-        packet.addMetadata("parse", true); //We mark this packet to be parsed by the packet listener
-        packet.addMetadata("base-component", usesBaseComponents); //We also tell it whether this packet uses the base component API
-        packet.addMetadata("json", json); //And we finally provide it with the json we already got from the packet
+        packet.setMeta("parse", true); //We mark this packet to be parsed by the packet listener
+        packet.setMeta("base-component", usesBaseComponents); //We also tell it whether this packet uses the base component API
+        packet.setMeta("json", json); //And we finally provide it with the json we already got from the packet
     }
 
     public void setStorage(Storage st){
